@@ -101,20 +101,25 @@ def init_session_state():
 
 def auto_initialize():
     """Auto-initialize the system using hidden code-controlled model settings"""
+    # 🌟 SET YOUR CHOSEN MODEL FROM YOUR LIST HERE:
+    # [ "gemini-3.5-flash", "gemini-3-flash", "gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemma-4-31b", "gemma-4-26b" ]
     CHOSEN_MODEL = "gemini-2.5-flash" 
     
     if st.session_state.orchestrator is None:
         api_key = ""
         
+        # 1. Safely look for API Key in Streamlit secrets first
         try:
             if "GEMINI_API_KEY" in st.secrets:
                 api_key = st.secrets["GEMINI_API_KEY"]
         except Exception:
             pass
             
+        # 2. Fallback to OS environment variables if still not found
         if not api_key:
             api_key = os.environ.get("GEMINI_API_KEY", "")
         
+        # 3. If no key is found anywhere, show manual text input form
         if not api_key:
             with st.sidebar:
                 st.warning("⚠️ API Key Required")
@@ -128,12 +133,23 @@ def auto_initialize():
                     if api_key:
                         try:
                             schemes_path = 'schemes.json'
-                            # FIXED KEYWORD ARGUMENT HERE
-                            st.session_state.orchestrator = SchemeFinderOrchestrator(
+                            
+                            # First, initialize the orchestrator with the exact arguments it expects
+                            orchestrator = SchemeFinderOrchestrator(
                                 api_key=api_key, 
-                                schemes_json_path=schemes_path,
-                                model_name=CHOSEN_MODEL
+                                schemes_json_path=schemes_path
                             )
+                            
+                            # Next, look for inner agents and dynamically swap their model configuration safely
+                            for attr_name in ['eligibility_agent', 'matcher_agent', 'simplifier_agent', 'guide_agent', 'query_agent']:
+                                if hasattr(orchestrator, attr_name):
+                                    agent = getattr(orchestrator, attr_name)
+                                    if agent and hasattr(agent, 'model'):
+                                        import google.generativeai as genai
+                                        formatted_model = CHOSEN_MODEL if CHOSEN_MODEL.startswith('models/') else f'models/{CHOSEN_MODEL}'
+                                        agent.model = genai.GenerativeModel(formatted_model)
+                            
+                            st.session_state.orchestrator = orchestrator
                             st.success("✅ System ready!")
                             st.rerun()
                         except Exception as e:
@@ -142,15 +158,25 @@ def auto_initialize():
                         st.error("Please enter API key")
             return False
         
-        # If API Key WAS found automatically
+        # 4. If API Key WAS found automatically in secrets/env, initialize directly in background
         try:
             schemes_path = 'schemes.json'
-            # FIXED KEYWORD ARGUMENT HERE
-            st.session_state.orchestrator = SchemeFinderOrchestrator(
+            
+            orchestrator = SchemeFinderOrchestrator(
                 api_key=api_key, 
-                schemes_json_path=schemes_path,
-                model_name=CHOSEN_MODEL
+                schemes_json_path=schemes_path
             )
+            
+            # Dynamically override internal agent models to use your chosen model from the list
+            for attr_name in ['eligibility_agent', 'matcher_agent', 'simplifier_agent', 'guide_agent', 'query_agent']:
+                if hasattr(orchestrator, attr_name):
+                    agent = getattr(orchestrator, attr_name)
+                    if agent and hasattr(agent, 'model'):
+                        import google.generativeai as genai
+                        formatted_model = CHOSEN_MODEL if CHOSEN_MODEL.startswith('models/') else f'models/{CHOSEN_MODEL}'
+                        agent.model = genai.GenerativeModel(formatted_model)
+                        
+            st.session_state.orchestrator = orchestrator
         except Exception as e:
             st.error(f"Initialization failed: {str(e)}")
             return False
