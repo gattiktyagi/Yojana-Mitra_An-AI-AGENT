@@ -100,25 +100,48 @@ def init_session_state():
 
 
 def auto_initialize():
-    """Auto-initialize the system"""
+    """Auto-initialize the system using hidden code-controlled model settings"""
+    # Simply change this variable to whichever model you want to use from your list:
+    # [ "gemini-3.5-flash", "gemini-3-flash", "gemini-2.5-flash", "gemini-3.1-flash-lite", 
+    #   "gemini-2.5-flash-lite", "gemma-4-31b", "gemma-4-26b" ]
+    CHOSEN_MODEL = "gemini-3.1-flash-lite" 
+    
     if st.session_state.orchestrator is None:
-        # Try environment variable first
         api_key = ""
         
-        # If not in env, ask user
+        # 1. Safely look for API Key in Streamlit secrets first
+        try:
+            if "GEMINI_API_KEY" in st.secrets:
+                api_key = st.secrets["GEMINI_API_KEY"]
+        except Exception:
+            # Catch when local secrets.toml doesn't exist or is empty
+            pass
+            
+        # 2. Fallback to OS environment variables if still not found
+        if not api_key:
+            api_key = os.environ.get("GEMINI_API_KEY", "")
+        
+        # 3. If no key is found anywhere, show the manual key input form (Model is HIDDEN)
         if not api_key:
             with st.sidebar:
                 st.warning("⚠️ API Key Required")
+                
                 api_key = st.text_input(
                     "Enter Gemini API Key",
                     type="password",
-                    help="Get free key from https://makersuite.google.com/app/apikey"
+                    help="Get free key from https://google.com"
                 )
+                
                 if st.button("Initialize System"):
                     if api_key:
                         try:
                             schemes_path = 'schemes.json'
-                            st.session_state.orchestrator = SchemeFinderOrchestrator(api_key, schemes_path)
+                            # Secretly passing your code-defined model down to the backend
+                            st.session_state.orchestrator = SchemeFinderOrchestrator(
+                                api_key=api_key, 
+                                schemes_path=schemes_path,
+                                model_name=CHOSEN_MODEL
+                            )
                             st.success("✅ System ready!")
                             st.rerun()
                         except Exception as e:
@@ -127,10 +150,14 @@ def auto_initialize():
                         st.error("Please enter API key")
             return False
         
-        # Initialize with env API key
+        # 4. If API Key WAS found automatically, initialize silently in the background
         try:
             schemes_path = 'schemes.json'
-            st.session_state.orchestrator = SchemeFinderOrchestrator(api_key, schemes_path)
+            st.session_state.orchestrator = SchemeFinderOrchestrator(
+                api_key=api_key, 
+                schemes_path=schemes_path,
+                model_name=CHOSEN_MODEL
+            )
         except Exception as e:
             st.error(f"Initialization failed: {str(e)}")
             return False
