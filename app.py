@@ -103,7 +103,7 @@ def auto_initialize():
     """Auto-initialize the system using hidden code-controlled model settings"""
     # 🌟 SET YOUR CHOSEN MODEL FROM YOUR LIST HERE:
     # [ "gemini-3.5-flash", "gemini-3-flash", "gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemma-4-31b", "gemma-4-26b" ]
-    CHOSEN_MODEL = "gemini-2.5-flash" 
+    CHOSEN_MODEL = "gemini-3.1-flash-lite" 
     
     if st.session_state.orchestrator is None:
         api_key = ""
