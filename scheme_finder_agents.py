@@ -66,7 +66,7 @@ class BaseAgent:
     
     def __init__(self, api_key: str, agent_type: AgentType):
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('models/gemini-2.5-flash')
+        self.model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
         self.agent_type = agent_type
         self.chat = None
     
