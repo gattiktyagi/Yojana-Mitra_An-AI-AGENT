@@ -281,13 +281,16 @@ def create_user_profile_form():
             st.session_state.user_profile = profile
             
             # Find schemes
-            with st.spinner("🔄 AI agents analyzing your profile..."):
+            with st.spinner("🔄 AI agents analyzing your profile safely..."):
+                import time
                 st.session_state.orchestrator.set_user_profile(profile)
+                
+                # Introduce a 2-second sleep to let the previous agent pool clear out
+                time.sleep(2.0) 
                 st.session_state.matched_schemes = st.session_state.orchestrator.get_eligible_schemes()
             
             st.success("✅ Analysis complete!")
             st.rerun()
-
 
 def display_matched_schemes():
     """Display matched schemes"""
